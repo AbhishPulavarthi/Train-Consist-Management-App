@@ -1,5 +1,6 @@
 import org.junit.jupiter.api.Test;
 import java.util.*;
+import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TrainConsistManagementTest {
@@ -14,94 +15,83 @@ class TrainConsistManagementTest {
         }
     }
 
-    private int totalCapacity(List<Bogie> bogies) {
+    private List<Bogie> loopFilter(List<Bogie> bogies) {
+        List<Bogie> result = new ArrayList<>();
+        for (Bogie b : bogies) {
+            if (b.capacity > 60) {
+                result.add(b);
+            }
+        }
+        return result;
+    }
+
+    private List<Bogie> streamFilter(List<Bogie> bogies) {
         return bogies.stream()
-                .map(b -> b.capacity)
-                .reduce(0, Integer::sum);
+                .filter(b -> b.capacity > 60)
+                .collect(Collectors.toList());
     }
 
     @Test
-    void testReduce_TotalSeatCalculation() {
+    void testLoopFilteringLogic() {
         List<Bogie> bogies = Arrays.asList(
-                new Bogie("Sleeper", 70),
-                new Bogie("AC Chair", 60)
+                new Bogie("A", 50),
+                new Bogie("B", 70)
         );
 
-        int result = totalCapacity(bogies);
+        List<Bogie> result = loopFilter(bogies);
 
-        assertEquals(130, result);
+        assertEquals(1, result.size());
     }
 
     @Test
-    void testReduce_MultipleBogiesAggregation() {
+    void testStreamFilteringLogic() {
         List<Bogie> bogies = Arrays.asList(
-                new Bogie("Sleeper", 70),
-                new Bogie("AC Chair", 60),
-                new Bogie("First Class", 50)
+                new Bogie("A", 50),
+                new Bogie("B", 70)
         );
 
-        int result = totalCapacity(bogies);
+        List<Bogie> result = streamFilter(bogies);
 
-        assertEquals(180, result);
+        assertEquals(1, result.size());
     }
 
     @Test
-    void testReduce_SingleBogieCapacity() {
-        List<Bogie> bogies = Collections.singletonList(
-                new Bogie("Sleeper", 80)
+    void testLoopAndStreamResultsMatch() {
+        List<Bogie> bogies = Arrays.asList(
+                new Bogie("A", 80),
+                new Bogie("B", 40),
+                new Bogie("C", 90)
         );
 
-        int result = totalCapacity(bogies);
+        List<Bogie> loopResult = loopFilter(bogies);
+        List<Bogie> streamResult = streamFilter(bogies);
 
-        assertEquals(80, result);
+        assertEquals(loopResult.size(), streamResult.size());
     }
 
     @Test
-    void testReduce_EmptyBogieList() {
+    void testExecutionTimeMeasurement() {
         List<Bogie> bogies = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            bogies.add(new Bogie("A", i));
+        }
 
-        int result = totalCapacity(bogies);
+        long start = System.nanoTime();
+        streamFilter(bogies);
+        long end = System.nanoTime();
 
-        assertEquals(0, result);
+        assertTrue(end - start > 0);
     }
 
     @Test
-    void testReduce_CorrectCapacityExtraction() {
-        List<Bogie> bogies = Arrays.asList(
-                new Bogie("Sleeper", 40),
-                new Bogie("AC Chair", 60)
-        );
+    void testLargeDatasetProcessing() {
+        List<Bogie> bogies = new ArrayList<>();
+        for (int i = 0; i < 10000; i++) {
+            bogies.add(new Bogie("A", i % 100));
+        }
 
-        int result = totalCapacity(bogies);
+        List<Bogie> result = streamFilter(bogies);
 
-        assertEquals(100, result);
-    }
-
-    @Test
-    void testReduce_AllBogiesIncluded() {
-        List<Bogie> bogies = Arrays.asList(
-                new Bogie("Sleeper", 30),
-                new Bogie("AC Chair", 40),
-                new Bogie("First Class", 50)
-        );
-
-        int result = totalCapacity(bogies);
-
-        assertEquals(120, result);
-    }
-
-    @Test
-    void testReduce_OriginalListUnchanged() {
-        List<Bogie> bogies = new ArrayList<>(Arrays.asList(
-                new Bogie("Sleeper", 70),
-                new Bogie("AC Chair", 60)
-        ));
-
-        int originalSize = bogies.size();
-
-        int result = totalCapacity(bogies);
-
-        assertEquals(originalSize, bogies.size());
-        assertEquals(130, result);
+        assertFalse(result.isEmpty());
     }
 }
